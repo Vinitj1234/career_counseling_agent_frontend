@@ -3,9 +3,10 @@ import axios from "axios";
 import "./App.css";
 
 const SUGGESTIONS = [
+  "Analyze My Resume",
   "How do I switch careers into software engineering?",
   "What skills should a data scientist have?",
-  "Help me write a professional summary for my resume.",
+  
   "What are the highest-paying careers in 2025?",
   "How do I prepare for a technical interview?",
   "What certifications are worth pursuing in cloud computing?",

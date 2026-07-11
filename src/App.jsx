@@ -242,12 +242,11 @@ export default function App() {
     }));
 
     try {
-      const res = await axios.post(
-        "https://career-counseling-agent-backend.onrender.com/api/chat",
-        {
-          message: input
-        }
-      );
+      const API_URL = import.meta.env.VITE_API_URL;
+
+        const res = await axios.post(API_URL, {
+          message: msg,
+        });
       const botText = res.data.response ?? "No response received.";
       updateSession(activeId, (s) => ({
         ...s,
@@ -264,7 +263,7 @@ export default function App() {
           m.id === placeholderId
             ? {
                 role: "bot",
-                text: "⚠️ Could not reach the server. Please make sure the backend is running on port 8090.",
+                text: "⚠️ Unable to connect to the backend server. Please try again in a few seconds.",
                 time: formatTime(),
                 loading: false,
               }

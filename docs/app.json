@@ -1,0 +1,32 @@
+{
+  "name": "Agentic AI Career Counseling Companion",
+  "description": "AI-powered career counseling and resume analysis application using IBM watsonx Orchestrate, IBM Granite, Spring Boot, and React.",
+  "version": "1.0.0",
+  "developer": {
+    "name": "Vinit Jadhav"
+  },
+  "frontend": {
+    "repository": "https://github.com/Vinitj1234/career_counseling_agent_frontend",
+    "url": "https://career-counseling-agent-frontend.onrender.com"
+  },
+  "backend": {
+    "repository": "https://github.com/Vinitj1234/career_counseling_agent_backend",
+    "url": "https://career-counseling-agent-backend.onrender.com",
+    "api": "https://career-counseling-agent-backend.onrender.com/api/chat",
+    "swagger": "https://career-counseling-agent-backend.onrender.com/swagger-ui/index.html",
+    "openapi": "https://career-counseling-agent-backend.onrender.com/v3/api-docs"
+  },
+  "ibm": {
+    "platform": "IBM watsonx Orchestrate",
+    "model": "IBM Granite (GPT-OSS 120B)",
+    "agent": "Career Counseling Companion"
+  },
+  "features": [
+    "Career Counseling",
+    "Resume Analysis",
+    "Skill Gap Detection",
+    "Career Recommendations",
+    "Learning Roadmaps",
+    "Certification Suggestions"
+  ]
+}

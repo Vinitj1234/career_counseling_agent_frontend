@@ -1,15 +1,50 @@
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
+import * as pdfjsLib from "pdfjs-dist";
 import "./App.css";
 
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.mjs",
+  import.meta.url
+).toString();
+
 const SUGGESTIONS = [
-  "Analyze My Resume",
-  "How do I switch careers into software engineering?",
-  "What skills should a data scientist have?",
-  
-  "What are the highest-paying careers in 2025?",
-  "How do I prepare for a technical interview?",
-  "What certifications are worth pursuing in cloud computing?",
+  {
+    icon: "📄",
+    label: "Analyze My Resume",
+    sub: "Get roles, salary & growth roadmap",
+    prompt: `Analyze my resume and give a full career analysis — no follow-up questions.\n\nName: Vinit Jadhav\nEducation: B.Tech CSE, MIT Academy of Engineering (2028)\nSkills: Java, Spring Boot, Hibernate, MySQL, REST APIs, React (Basic), Git, HTML, CSS\nProjects: Hospital Management System (Spring Boot + MySQL), AI Career Counseling Companion (IBM watsonx + Granite)\nInternship: IBM SkillsBuild Virtual Internship\nCertifications: IBM AI Fundamentals, Java Programming\nAchievements: 250+ LeetCode DSA problems, hackathons\nGoal: Java Full Stack Developer specializing in Spring Boot & Cloud\n\nProvide: best-fit roles, expected salary (India), skill gaps, top certifications, and a 6-month roadmap.`,
+  },
+  {
+    icon: "💰",
+    label: "Highest-Paying Careers in 2026",
+    sub: "Top roles by salary worldwide",
+    prompt: "What are the highest-paying careers in 2026? Include expected salaries, required skills, and growth outlook.",
+  },
+  {
+    icon: "🛣️",
+    label: "Java Full Stack Roadmap",
+    sub: "Step-by-step learning path",
+    prompt: "Give me a complete step-by-step roadmap to become a Java Full Stack Developer specializing in Spring Boot and cloud technologies. Include skills, tools, certifications, and timeline.",
+  },
+  {
+    icon: "🎯",
+    label: "Interview Prep Tips",
+    sub: "Crack your next tech interview",
+    prompt: "How do I prepare for a Java Spring Boot developer interview? Give me common questions, topics to study, and tips to stand out.",
+  },
+  {
+    icon: "☁️",
+    label: "Best Cloud Certifications",
+    sub: "AWS, Azure, GCP — which to pick?",
+    prompt: "What are the best cloud certifications for a Java developer in 2026? Compare AWS, Azure, and GCP certifications by difficulty, cost, and career value.",
+  },
+  {
+    icon: "📈",
+    label: "Skill Gap Analysis",
+    sub: "What skills am I missing?",
+    prompt: "I am a Java Spring Boot developer with 0-2 years of experience. What are the most important skill gaps I should fill in 2026 to land a senior role or higher salary? Be specific.",
+  },
 ];
 
 const BotIcon = () => (
@@ -42,6 +77,14 @@ const NewChatIcon = () => (
   </svg>
 );
 
+const SidebarToggleIcon = ({ open }) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    {open
+      ? <path d="M15 18l-6-6 6-6" />   /* chevron left = close */
+      : <path d="M9 18l6-6-6-6" />}     /* chevron right = open */
+  </svg>
+);
+
 const TrashIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="3 6 5 6 21 6" />
@@ -65,9 +108,52 @@ const StarIcon = () => (
   </svg>
 );
 
+const CopyIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
+const RegenerateIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 4v6h6" /><path d="M3.51 15a9 9 0 1 0 .49-4.5" />
+  </svg>
+);
+
+const PaperclipIcon = () => (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.41 17.41a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+  </svg>
+);
+
+const XIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+
+async function extractPdfText(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let text = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map((item) => item.str).join(" ") + "\n";
+  }
+  return text.trim();
+}
+
 function TypingDots() {
   return (
-    <div className="typing-dots">
+    <div className="typing-dots" aria-label="thinking">
       <span /><span /><span />
     </div>
   );
@@ -75,15 +161,16 @@ function TypingDots() {
 
 function parseMarkdown(md) {
   let html = md
-    // Escape HTML special chars first
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
-  // Fenced code blocks ```lang\n...\n```
-  html = html.replace(/```[\w]*\n?([\s\S]*?)```/g, (_, code) =>
-    `<pre><code>${code.trimEnd()}</code></pre>`
-  );
+  // Fenced code blocks — inject header with language label + copy button
+  html = html.replace(/```([\w]*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+    const label = lang || "code";
+    const escaped = code.trimEnd();
+    return `<div class="code-block"><div class="code-header"><span class="code-lang">${label}</span><button class="code-copy-btn" data-code="${escaped.replace(/"/g, "&quot;")}">Copy code</button></div><pre><code>${escaped}</code></pre></div>`;
+  });
 
   // Inline code `...`
   html = html.replace(/`([^`\n]+)`/g, "<code>$1</code>");
@@ -158,28 +245,73 @@ function parseMarkdown(md) {
   return html;
 }
 
-function MessageBubble({ msg }) {
-  const isBot = msg.role === "bot";
+function CopyButton({ text }) {
+  const [copied, setCopied] = useState(false);
+  function handleCopy() {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
   return (
-    <div className={`message-row ${isBot ? "bot-row" : "user-row"}`}>
-      <div className={`avatar ${isBot ? "avatar-bot" : "avatar-user"}`}>
-        {isBot ? <BotIcon /> : <UserIcon />}
+    <button className={`msg-copy-btn ${copied ? "msg-copy-copied" : ""}`} onClick={handleCopy} title="Copy response">
+      {copied ? <><CheckIcon /> Copied!</> : <><CopyIcon /> Copy</>}
+    </button>
+  );
+}
+
+function MessageBubble({ msg, onRegenerate }) {
+  const isBot = msg.role === "bot";
+  const contentRef = useRef(null);
+
+  // Wire up code-block copy buttons after render
+  useEffect(() => {
+    if (!contentRef.current) return;
+    const btns = contentRef.current.querySelectorAll(".code-copy-btn");
+    btns.forEach((btn) => {
+      btn.onclick = () => {
+        const code = btn.getAttribute("data-code");
+        navigator.clipboard.writeText(code).then(() => {
+          btn.textContent = "Copied!";
+          btn.classList.add("code-copy-copied");
+          setTimeout(() => { btn.textContent = "Copy code"; btn.classList.remove("code-copy-copied"); }, 2000);
+        });
+      };
+    });
+  });
+
+  if (!isBot) {
+    return (
+      <div className="user-turn">
+        <div className="user-bubble">
+          <span className="bubble-text">{msg.text}</span>
+        </div>
       </div>
-      <div className={`bubble ${isBot ? "bubble-bot" : "bubble-user"}`}>
+    );
+  }
+
+  return (
+    <div className="bot-turn">
+      <div className="bot-avatar"><BotIcon /></div>
+      <div className="bot-content">
         {msg.loading ? (
           <TypingDots />
-        ) : isBot ? (
-          <>
-            <div
-              className="bubble-md"
-              dangerouslySetInnerHTML={{ __html: parseMarkdown(msg.text) }}
-            />
-            <span className="bubble-time">{msg.time}</span>
-          </>
         ) : (
           <>
-            <span className="bubble-text">{msg.text}</span>
-            <span className="bubble-time">{msg.time}</span>
+            <div
+              ref={contentRef}
+              className={`bubble-md${msg.fresh ? " bubble-fade-in" : ""}`}
+              dangerouslySetInnerHTML={{ __html: parseMarkdown(msg.text) }}
+            />
+            <div className={`bot-actions${msg.fresh ? " bubble-fade-in" : ""}`}>
+              <CopyButton text={msg.text} />
+              {onRegenerate && (
+                <button className="msg-action-btn" onClick={onRegenerate} title="Regenerate response">
+                  <RegenerateIcon /> Regenerate
+                </button>
+              )}
+              <span className="bubble-time">{msg.time}</span>
+            </div>
           </>
         )}
       </div>
@@ -201,39 +333,96 @@ function createSession() {
   };
 }
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export default function App() {
   const [sessions, setSessions] = useState(() => [createSession()]);
   const [activeId, setActiveId] = useState(() => sessions[0].id);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [serverStatus, setServerStatus] = useState("idle");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [attachedFile, setAttachedFile] = useState(null); // { name, text }
+  const [fileLoading, setFileLoading] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const activeSession = sessions.find((s) => s.id === activeId) ?? sessions[0];
 
+  // Keep-alive ping every 10 minutes so Render free tier stays warm
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [sessions, activeId]);
+    const ping = () => axios.get(API_URL.replace("/api/chat", "/actuator/health")).catch(() => {});
+    ping(); // ping immediately on mount
+    const id = setInterval(ping, 10 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const messagesAreaRef = useRef(null);
+  const prevMsgCountRef = useRef(0);
+
+  // Only smooth-scroll when a new message is actually added
+  useEffect(() => {
+    const msgs = activeSession?.messages ?? [];
+    const prev = prevMsgCountRef.current;
+    prevMsgCountRef.current = msgs.length;
+
+    if (msgs.length <= prev) return; // switched chat or no new message
+
+    const el = messagesAreaRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [activeSession?.messages?.length, activeId]);
 
   function updateSession(id, updater) {
     setSessions((prev) => prev.map((s) => (s.id === id ? updater(s) : s)));
   }
 
+  async function handleFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setFileLoading(true);
+    try {
+      let text = "";
+      if (file.type === "application/pdf") {
+        text = await extractPdfText(file);
+      } else {
+        text = await file.text();
+      }
+      setAttachedFile({ name: file.name, text });
+      inputRef.current?.focus();
+    } catch {
+      alert("Could not read file. Please try a different PDF or text file.");
+    } finally {
+      setFileLoading(false);
+    }
+  }
+
   async function sendMessage(text) {
-    const msg = (text ?? input).trim();
+    const baseMsg = (text ?? input).trim();
+    const currentFile = attachedFile; // capture before clearing
+    const msg = currentFile
+      ? `[Resume attached: ${currentFile.name}]\n\n${currentFile.text}\n\n${baseMsg || "Analyze my resume above and give a full career analysis — roles, salary, skill gaps, certifications, and a 6-month roadmap."}`
+      : baseMsg;
     if (!msg || loading) return;
     setInput("");
+    setAttachedFile(null);
     setLoading(true);
+    setServerStatus("waking");
 
     if (activeSession.messages.length === 0) {
       updateSession(activeId, (s) => ({
         ...s,
-        title: msg.slice(0, 38) + (msg.length > 38 ? "…" : ""),
+        title: (currentFile ? `📄 ${currentFile.name}` : baseMsg).slice(0, 38),
       }));
     }
 
-    const userMsg = { role: "user", text: msg, time: formatTime() };
+    // Show a clean label in the chat bubble instead of the full raw PDF dump
+    const displayText = currentFile
+      ? `📄 ${currentFile.name}${baseMsg ? `\n\n${baseMsg}` : ""}`
+      : msg;
+    const userMsg = { role: "user", text: displayText, time: formatTime() };
     const placeholderId = `ph-${Date.now()}`;
     const botPlaceholder = { role: "bot", text: "", time: "", loading: true, id: placeholderId };
 
@@ -243,28 +432,28 @@ export default function App() {
     }));
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL;
-
-        const res = await axios.post(API_URL, {
-          message: msg,
-        });
+      const res = await axios.post(API_URL, { message: msg });
       const botText = res.data.response ?? "No response received.";
+      setServerStatus("ready");
+
+      // Render full formatted response immediately with a fade-in
       updateSession(activeId, (s) => ({
         ...s,
         messages: s.messages.map((m) =>
           m.id === placeholderId
-            ? { role: "bot", text: botText, time: formatTime(), loading: false }
+            ? { role: "bot", text: botText, time: formatTime(), loading: false, fresh: true }
             : m
         ),
       }));
     } catch {
+      setServerStatus("idle");
       updateSession(activeId, (s) => ({
         ...s,
         messages: s.messages.map((m) =>
           m.id === placeholderId
             ? {
                 role: "bot",
-                text: "⚠️ Unable to connect to the backend server. Please try again in a few seconds.",
+                text: "⚠️ Unable to connect to the server. Please check your connection and try again.",
                 time: formatTime(),
                 loading: false,
               }
@@ -344,10 +533,27 @@ export default function App() {
         </nav>
 
         <div className="sidebar-footer">
+          <div className="sidebar-profile">
+            <div className="sidebar-profile-avatar">
+              <UserIcon />
+            </div>
+            <div className="sidebar-profile-info">
+              <span className="sidebar-profile-name">Guest User</span>
+              <span className="sidebar-profile-status">● Online</span>
+            </div>
+          </div>
           <div className="sidebar-footer-badge">
             <StarIcon /> AI-Powered Career Advisor
           </div>
         </div>
+        {/* Sidebar edge toggle — ChatGPT style */}
+        <button
+          className="sidebar-edge-toggle"
+          onClick={() => setSidebarOpen((v) => !v)}
+          title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+        >
+          <SidebarToggleIcon open={sidebarOpen} />
+        </button>
       </aside>
 
       {/* ─── Main ─── */}
@@ -368,7 +574,7 @@ export default function App() {
         </header>
 
         {/* Messages */}
-        <div className="messages-area">
+        <div className="messages-area" ref={messagesAreaRef}>
           {isEmpty ? (
             <div className="welcome">
               <div className="welcome-icon"><BotIcon /></div>
@@ -378,8 +584,12 @@ export default function App() {
               </p>
               <div className="suggestions-grid">
                 {SUGGESTIONS.map((s) => (
-                  <button key={s} className="suggestion-chip" onClick={() => sendMessage(s)}>
-                    {s}
+                  <button key={s.label} className="suggestion-chip" onClick={() => sendMessage(s.prompt)}>
+                    <span className="chip-icon">{s.icon}</span>
+                    <span className="chip-body">
+                      <span className="chip-label">{s.label}</span>
+                      <span className="chip-sub">{s.sub}</span>
+                    </span>
                   </button>
                 ))}
               </div>
@@ -387,20 +597,56 @@ export default function App() {
           ) : (
             <div className="messages-inner">
               {activeSession.messages.map((msg, i) => (
-                <MessageBubble key={i} msg={msg} />
+                <MessageBubble
+                  key={i}
+                  msg={msg}
+                  onRegenerate={
+                    msg.role === "bot" && !msg.loading && i === activeSession.messages.length - 1
+                      ? () => {
+                          const lastUser = [...activeSession.messages].reverse().find((m) => m.role === "user");
+                          if (lastUser) sendMessage(lastUser.text);
+                        }
+                      : null
+                  }
+                />
               ))}
-              <div ref={bottomRef} />
             </div>
           )}
         </div>
 
         {/* Input bar */}
         <div className="input-bar">
+          {/* Attached file chip */}
+          {attachedFile && (
+            <div className="file-chip">
+              <span className="file-chip-icon">📄</span>
+              <span className="file-chip-name">{attachedFile.name}</span>
+              <button className="file-chip-remove" onClick={() => setAttachedFile(null)} title="Remove file">
+                <XIcon />
+              </button>
+            </div>
+          )}
           <div className="input-wrap">
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.txt"
+              style={{ display: "none" }}
+              onChange={handleFileChange}
+            />
+            <button
+              className={`attach-btn ${fileLoading ? "attach-loading" : ""}`}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading || fileLoading}
+              title="Attach PDF or TXT resume"
+            >
+              {fileLoading ? <span className="attach-spinner" /> : <PaperclipIcon />}
+            </button>
             <textarea
               ref={inputRef}
               className="chat-input"
-              placeholder="Ask about careers, skills, resume tips, interview prep…"
+              placeholder={attachedFile ? "Add a message or just hit send to analyze…" : "Ask about careers, or attach your resume PDF…"}
               value={input}
               rows={1}
               onChange={(e) => {
@@ -412,15 +658,15 @@ export default function App() {
               disabled={loading}
             />
             <button
-              className={`send-btn ${input.trim() && !loading ? "send-active" : ""}`}
+              className={`send-btn ${(input.trim() || attachedFile) && !loading ? "send-active" : ""}`}
               onClick={() => sendMessage()}
-              disabled={!input.trim() || loading}
+              disabled={(!input.trim() && !attachedFile) || loading}
               title="Send message"
             >
               <SendIcon />
             </button>
           </div>
-          <p className="input-hint">Enter to send · Shift+Enter for new line</p>
+          <p className="input-hint">Enter to send · Shift+Enter for new line · PDF/TXT supported</p>
         </div>
       </main>
     </div>
